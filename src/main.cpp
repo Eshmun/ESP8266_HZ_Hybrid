@@ -56,7 +56,6 @@ void loop()
         if (WiFi.SSID(i) == "Zombie")
         {
             zombie_found = true;
-            Serial.println(WiFi.RSSI(i));
 
             if (human)
             {
@@ -82,7 +81,6 @@ void loop()
         else if (WiFi.SSID(i) == "Human")
         {
             human_found = true;
-            Serial.println(WiFi.RSSI(i));
 
             if (!human)
             {
