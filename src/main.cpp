@@ -60,11 +60,8 @@ void loop()
             if (human)
             {
                 rssi_to_leds((int)WiFi.RSSI(i));
-            }
 
-            if (WiFi.RSSI(i) > MIN_RSSI_HZ)
-            {
-                if (human)
+                if (WiFi.RSSI(i) > MIN_RSSI_HZ)
                 {
                     WiFi.softAP("Zombie");
                     Serial.println("I'm now a Zombie!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -77,6 +74,8 @@ void loop()
                     human = false;
                 }
             }
+
+
         }
         else if (WiFi.SSID(i) == "Human")
         {
