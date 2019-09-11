@@ -7,24 +7,34 @@
 #include <string.h>
 #include "ESP8266WiFi.h"
 #include <FastLED.h>
+#include <Ticker.h>
 
 #define NUM_LEDS 8
 #define DATA_PIN 14
 
-#define MIN_RSSI_HZ -40
-#define MIN_RSSI_ZH -40
+enum State_enum {SCANNING, HUMAN, ZOMBIE, COMMAND};
+//enum Scan_enum {NONE, ZOMBIE_FOUND, HUMAN_FOUND, ZOMBIE_PROX, HUMAN_PROX, COMMAND_PROX};
+enum Command_enum {NONE, START_GAME, CHANGE_STATE, CHANGE_MIN_RSSI_HZ, CHANGE_MIN_RSSI_ZH};
+
+uint8_t state = SCANNING;
+uint8_t scan_result = NONE;
+
+int MIN_RSSI_HZ = -40;
+int MIN_RSSI_ZH = -40;
 
 CRGB leds[NUM_LEDS];
 
+Ticker ticker;
+
+struct scanResults
+{
+    int closestHuman, closestZombie, closestCommand, commandType, commandMessage;
+};
+
 bool human = true; //1=Human 0=Zombie
 
-bool zombie_found = false;
-bool human_found = false;
-
-bool zombie_prox = false;
-bool human_prox = false;
-
 void rssi_to_leds(int rssi);
+scanResults scanForNetworks();
 
 void setup()
 {
@@ -38,16 +48,35 @@ void setup()
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
     WiFi.begin("Human", "", 1);
+
+    ticker.attach_ms(100, scanForNetworks);
 }
 
 void loop()
 {
+    switch (state)
+    {
+    case SCANNING:
+        break;
+    case HUMAN:
+        scanResults scanresults = scanForNetworks();
+        if (scanresults.closestZombie > MIN_RSSI_HZ)
+        {
+
+        }
+
+        break;
+    case ZOMBIE:
+        break;
+    case COMMAND:
+        break;
+    }
+
     int n = WiFi.scanNetworks(false, false, 1, NULL); //scan channel 1
     for (int i = 0; i < n; i++)
     {
         if (WiFi.SSID(i) == "Zombie")
         {
-            zombie_found = true;
 
             if (human)
             {
@@ -71,7 +100,6 @@ void loop()
         }
         else if (WiFi.SSID(i) == "Human")
         {
-            human_found = true;
 
             if (!human)
             {
@@ -128,4 +156,54 @@ void rssi_to_leds(int rssi)
     {
         leds[j] = CRGB::Black;
     }
+}
+
+scanResults scanForNetworks()
+{
+    int n = WiFi.scanNetworks(false, false, 1, NULL); //scan channel 1
+
+    int idZombie    = 1000;
+    int idHuman     = 1000;
+    int idCommand   = 1000;
+
+    scanResults results;
+    results.closestZombie   = -100;
+    results.closestHuman    = -100;
+    results.closestCommand  = -100;
+    results.commandType     = NONE;
+    results.commandMessage  = 0;
+
+    for (int i = 0; i < n; i++)
+    {
+        if (WiFi.SSID(i).startsWith("Zombie"))
+        {
+            if (WiFi.RSSI(i) > results.closestZombie)
+            {
+                results.closestZombie = WiFi.RSSI(i);
+                idZombie = i;
+            }
+        }
+        else if (WiFi.SSID(i).startsWith("Human"))
+        {
+            if (WiFi.RSSI(i) > results.closestHuman)
+            {
+                results.closestHuman = WiFi.RSSI(i);
+                idHuman = i;
+            }
+        }
+        else if (WiFi.SSID(i).startsWith("Command"))
+        {
+            if (WiFi.RSSI(i) > results.closestCommand)
+            {
+                results.closestCommand = WiFi.RSSI(i);
+                idCommand = i;
+            }
+        }
+    }
+    if (idCommand < 1000)
+    {
+        String SSID = WiFi.SSID(idCommand);
+        results.commandType = SSID.substring(SSID.indexOf("|"), SSID.indexOf("|") + 1).toInt();
+    }
+    return results;
 }
