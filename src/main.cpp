@@ -37,15 +37,7 @@ void setup()
 
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
-
-    if (human)
-    {
-        WiFi.begin("Human", "", 1);
-    }
-    else
-    {
-        WiFi.begin("Zombie", "", 1);
-    }
+    WiFi.begin("Human", "", 1);
 }
 
 void loop()
