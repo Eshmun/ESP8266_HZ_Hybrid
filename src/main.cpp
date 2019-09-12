@@ -12,11 +12,11 @@
 #define NUM_LEDS 8
 #define DATA_PIN 14
 
-enum State_enum {SCANNING, HUMAN, ZOMBIE, COMMAND};
+enum State_enum {HUMAN, ZOMBIE, COMMAND};
 //enum Scan_enum {NONE, ZOMBIE_FOUND, HUMAN_FOUND, ZOMBIE_PROX, HUMAN_PROX, COMMAND_PROX};
 enum Command_enum {NONE, START_GAME, CHANGE_STATE, CHANGE_MIN_RSSI_HZ, CHANGE_MIN_RSSI_ZH};
 
-uint8_t state = SCANNING;
+uint8_t state = HUMAN;
 uint8_t scan_result = NONE;
 
 int MIN_RSSI_HZ = -40;
@@ -28,10 +28,12 @@ Ticker ticker;
 
 struct scanResults
 {
-    int closestHuman, closestZombie, closestCommand, commandType, commandMessage;
+    int closestHuman, idHuman;
+    int closestZombie, idZombie;
+    int closestCommand, commandType, commandMessage;
 };
 
-bool human = true; //1=Human 0=Zombie
+//bool human = true; //1=Human 0=Zombie
 
 void rssi_to_leds(int rssi);
 scanResults scanForNetworks();
@@ -49,29 +51,37 @@ void setup()
     WiFi.disconnect();
     WiFi.begin("Human", "", 1);
 
-    ticker.attach_ms(100, scanForNetworks);
+    //ticker.attach_ms(100, scanForNetworks);
 }
 
 void loop()
 {
+    scanResults scanresults = scanForNetworks();
+
     switch (state)
     {
-    case SCANNING:
-        break;
     case HUMAN:
-        scanResults scanresults = scanForNetworks();
+        rssi_to_leds(scanresults.closestZombie);
         if (scanresults.closestZombie > MIN_RSSI_HZ)
         {
-
+            Serial.println(scanresults.idZombie);
+            state = ZOMBIE;
         }
 
         break;
     case ZOMBIE:
+        rssi_to_leds(scanresults.closestHuman);
+        if (scanresults.closestHuman > MIN_RSSI_ZH)
+        {
+            Serial.println(scanresults.idHuman);
+            state = ZOMBIE;
+        }
+
         break;
     case COMMAND:
         break;
     }
-
+    /*
     int n = WiFi.scanNetworks(false, false, 1, NULL); //scan channel 1
     for (int i = 0; i < n; i++)
     {
@@ -122,7 +132,8 @@ void loop()
             }
         }
         FastLED.show();
-    }
+
+    }*/
 }
 
 void rssi_to_leds(int rssi)
@@ -168,7 +179,11 @@ scanResults scanForNetworks()
 
     scanResults results;
     results.closestZombie   = -100;
+    results.idZombie        = 0;
+
     results.closestHuman    = -100;
+    results.idHuman         = 0;
+
     results.closestCommand  = -100;
     results.commandType     = NONE;
     results.commandMessage  = 0;
@@ -203,7 +218,18 @@ scanResults scanForNetworks()
     if (idCommand < 1000)
     {
         String SSID = WiFi.SSID(idCommand);
-        results.commandType = SSID.substring(SSID.indexOf("|"), SSID.indexOf("|") + 1).toInt();
+        results.commandType     = SSID.substring(SSID.indexOf("|"), SSID.indexOf("|") + 1).toInt();
+        results.commandMessage  = SSID.substring(SSID.indexOf("|") + 1).toInt();
+    }
+    if (idZombie < 1000)
+    {
+        String SSID             = WiFi.SSID(idZombie);
+        results.idZombie        = SSID.substring(SSID.indexOf("|")).toInt();
+    }
+    if (idHuman < 1000)
+    {
+        String SSID             = WiFi.SSID(idHuman);
+        results.idHuman         = SSID.substring(SSID.indexOf("|")).toInt();
     }
     return results;
 }
