@@ -11,16 +11,17 @@
 
 #define NUM_LEDS 8
 #define DATA_PIN 14
+#define DEBUG 1
 
 enum State_enum {HUMAN, ZOMBIE, COMMAND};
 //enum Scan_enum {NONE, ZOMBIE_FOUND, HUMAN_FOUND, ZOMBIE_PROX, HUMAN_PROX, COMMAND_PROX};
 enum Command_enum {NONE, START_GAME, CHANGE_STATE, CHANGE_MIN_RSSI_HZ, CHANGE_MIN_RSSI_ZH};
 
 uint8_t state = HUMAN;
-uint8_t scan_result = NONE;
 
 int MIN_RSSI_HZ = -40;
 int MIN_RSSI_ZH = -40;
+int MIN_RSSI_CMD = -20;
 
 CRGB leds[NUM_LEDS];
 
@@ -65,8 +66,14 @@ void loop()
         if (scanresults.closestZombie > MIN_RSSI_HZ)
         {
             //Serial.println(scanresults.idZombie);
-            //state = ZOMBIE;
+            state = ZOMBIE;
         }
+
+        if (scanresults.closestCommand > MIN_RSSI_CMD)
+        {
+            state = COMMAND;
+        }
+
 
         break;
     case ZOMBIE:
@@ -74,19 +81,68 @@ void loop()
         if (scanresults.closestHuman > MIN_RSSI_ZH)
         {
             //Serial.println(scanresults.idHuman);
-            //state = HUMAN;
+            state = HUMAN;
+        }
+
+        if (scanresults.closestCommand > MIN_RSSI_CMD)
+        {
+            state = COMMAND;
         }
 
         break;
     case COMMAND:
+        switch (scanresults.commandType)
+        {
+        case START_GAME:
+            break;
+
+        case CHANGE_STATE:
+            break;
+
+        case CHANGE_MIN_RSSI_HZ:
+            if ((scanresults.commandMessage > -100) && (scanresults.commandMessage < 0))
+            {
+                MIN_RSSI_HZ = scanresults.commandMessage;
+            }
+
+            break;
+
+        case CHANGE_MIN_RSSI_ZH:
+            if ((scanresults.commandMessage > -100) && (scanresults.commandMessage < 0))
+            {
+                MIN_RSSI_ZH = scanresults.commandMessage;
+            }
+            break;
+
+        default:
+            break;
+        }
         break;
     }
-    Serial.println(scanresults.closestZombie);
-    Serial.println(scanresults.closestHuman);
-    Serial.println(scanresults.closestCommand);
-    Serial.println(scanresults.idZombie);
-    Serial.println(scanresults.idHuman);
-    Serial.println();
+    if (DEBUG)
+    {
+        Serial.print("Zombie:   ");
+        Serial.println(scanresults.closestZombie);
+        Serial.print("ID Z:     ");
+        Serial.println(scanresults.idZombie);
+
+        Serial.print("Human:    ");
+        Serial.println(scanresults.closestHuman);
+        Serial.print("ID H:     ");
+        Serial.println(scanresults.idHuman);
+
+        Serial.print("Command:  ");
+        Serial.println(scanresults.closestCommand);
+        Serial.print("CMD T:    ");
+        Serial.println(scanresults.commandType);
+        Serial.print("CMD M:    ");
+        Serial.println(scanresults.commandMessage);
+
+        Serial.println();
+        delay(500);
+    }
+
+
     /*
     int n = WiFi.scanNetworks(false, false, 1, NULL); //scan channel 1
     for (int i = 0; i < n; i++)
@@ -140,7 +196,6 @@ void loop()
         FastLED.show();
 
     }*/
-    delay(500);
 }
 
 void rssi_to_leds(int rssi)
