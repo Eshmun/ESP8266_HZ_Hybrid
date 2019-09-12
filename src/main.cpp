@@ -17,7 +17,7 @@ enum State_enum {HUMAN, ZOMBIE, COMMAND};
 //enum Scan_enum {NONE, ZOMBIE_FOUND, HUMAN_FOUND, ZOMBIE_PROX, HUMAN_PROX, COMMAND_PROX};
 enum Command_enum {NONE, START_GAME, CHANGE_STATE, CHANGE_MIN_RSSI_HZ, CHANGE_MIN_RSSI_ZH};
 
-uint8_t state = HUMAN;
+int state = HUMAN;
 
 int MIN_RSSI_HZ = -40;
 int MIN_RSSI_ZH = -40;
@@ -65,7 +65,7 @@ void loop()
         rssi_to_leds(scanresults.closestZombie);
         if (scanresults.closestZombie > MIN_RSSI_HZ)
         {
-            //Serial.println(scanresults.idZombie);
+            Serial.println("ZOMBIE DETECTED!");
             state = ZOMBIE;
         }
 
@@ -80,7 +80,7 @@ void loop()
         rssi_to_leds(scanresults.closestHuman);
         if (scanresults.closestHuman > MIN_RSSI_ZH)
         {
-            //Serial.println(scanresults.idHuman);
+            Serial.println("HUMAND DETECTED!");
             state = HUMAN;
         }
 
@@ -137,6 +137,9 @@ void loop()
         Serial.println(scanresults.commandType);
         Serial.print("CMD M:    ");
         Serial.println(scanresults.commandMessage);
+
+        Serial.print("State:    ");
+        Serial.println(state);
 
         Serial.println();
         delay(500);
