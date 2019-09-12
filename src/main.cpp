@@ -64,8 +64,8 @@ void loop()
         rssi_to_leds(scanresults.closestZombie);
         if (scanresults.closestZombie > MIN_RSSI_HZ)
         {
-            Serial.println(scanresults.idZombie);
-            state = ZOMBIE;
+            //Serial.println(scanresults.idZombie);
+            //state = ZOMBIE;
         }
 
         break;
@@ -73,14 +73,20 @@ void loop()
         rssi_to_leds(scanresults.closestHuman);
         if (scanresults.closestHuman > MIN_RSSI_ZH)
         {
-            Serial.println(scanresults.idHuman);
-            state = ZOMBIE;
+            //Serial.println(scanresults.idHuman);
+            //state = HUMAN;
         }
 
         break;
     case COMMAND:
         break;
     }
+    Serial.println(scanresults.closestZombie);
+    Serial.println(scanresults.closestHuman);
+    Serial.println(scanresults.closestCommand);
+    Serial.println(scanresults.idZombie);
+    Serial.println(scanresults.idHuman);
+    Serial.println();
     /*
     int n = WiFi.scanNetworks(false, false, 1, NULL); //scan channel 1
     for (int i = 0; i < n; i++)
@@ -134,6 +140,7 @@ void loop()
         FastLED.show();
 
     }*/
+    delay(500);
 }
 
 void rssi_to_leds(int rssi)
@@ -173,9 +180,9 @@ scanResults scanForNetworks()
 {
     int n = WiFi.scanNetworks(false, false, 1, NULL); //scan channel 1
 
-    int idZombie    = 1000;
-    int idHuman     = 1000;
-    int idCommand   = 1000;
+    int indexZombie    = 1000;
+    int indexHuman     = 1000;
+    int indexCommand   = 1000;
 
     scanResults results;
     results.closestZombie   = -100;
@@ -195,7 +202,7 @@ scanResults scanForNetworks()
             if (WiFi.RSSI(i) > results.closestZombie)
             {
                 results.closestZombie = WiFi.RSSI(i);
-                idZombie = i;
+                indexZombie = i;
             }
         }
         else if (WiFi.SSID(i).startsWith("Human"))
@@ -203,7 +210,7 @@ scanResults scanForNetworks()
             if (WiFi.RSSI(i) > results.closestHuman)
             {
                 results.closestHuman = WiFi.RSSI(i);
-                idHuman = i;
+                indexHuman = i;
             }
         }
         else if (WiFi.SSID(i).startsWith("Command"))
@@ -211,25 +218,25 @@ scanResults scanForNetworks()
             if (WiFi.RSSI(i) > results.closestCommand)
             {
                 results.closestCommand = WiFi.RSSI(i);
-                idCommand = i;
+                indexCommand = i;
             }
         }
     }
-    if (idCommand < 1000)
+    if (indexCommand < 1000)
     {
-        String SSID = WiFi.SSID(idCommand);
-        results.commandType     = SSID.substring(SSID.indexOf("|"), SSID.indexOf("|") + 1).toInt();
-        results.commandMessage  = SSID.substring(SSID.indexOf("|") + 1).toInt();
+        String SSID = WiFi.SSID(indexCommand);
+        results.commandType     = SSID.substring(SSID.indexOf(".") + 1, SSID.indexOf(".") + 2).toInt();
+        results.commandMessage  = SSID.substring(SSID.indexOf(".") + 2).toInt();
     }
-    if (idZombie < 1000)
+    if (indexZombie < 1000)
     {
-        String SSID             = WiFi.SSID(idZombie);
-        results.idZombie        = SSID.substring(SSID.indexOf("|")).toInt();
+        String SSID             = WiFi.SSID(indexZombie);
+        results.idZombie        = SSID.substring(SSID.indexOf(".") + 1).toInt();
     }
-    if (idHuman < 1000)
+    if (indexHuman < 1000)
     {
-        String SSID             = WiFi.SSID(idHuman);
-        results.idHuman         = SSID.substring(SSID.indexOf("|")).toInt();
+        String SSID             = WiFi.SSID(indexHuman);
+        results.idHuman         = SSID.substring(SSID.indexOf(".") + 1).toInt();
     }
     return results;
 }
