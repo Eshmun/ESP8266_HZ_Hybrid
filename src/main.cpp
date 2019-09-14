@@ -1,11 +1,5 @@
 #include <Arduino.h>
-#include "osapi.h"
-#include "user_interface.h"
-#include "ets_sys.h"
-#include "os_type.h"
-#include <stdio.h>
-#include <string.h>
-#include "ESP8266WiFi.h"
+#include <ESP8266WiFi.h>
 #include <FastLED.h>
 #include <Ticker.h>
 
@@ -13,15 +7,16 @@
 #define DATA_PIN 14
 #define DEBUG 1
 
-enum State_enum {HUMAN, ZOMBIE, COMMAND};
+//enum State_enum {HUMAN, ZOMBIE, COMMAND};
 //enum Scan_enum {NONE, ZOMBIE_FOUND, HUMAN_FOUND, ZOMBIE_PROX, HUMAN_PROX, COMMAND_PROX};
-enum Command_enum {NONE, START_GAME, CHANGE_STATE, CHANGE_MIN_RSSI_HZ, CHANGE_MIN_RSSI_ZH};
-
-int state = HUMAN;
+//enum Command_enum {NONE, START_GAME, CHANGE_STATE, CHANGE_MIN_RSSI_HZ, CHANGE_MIN_RSSI_ZH};
 
 int MIN_RSSI_HZ = -40;
 int MIN_RSSI_ZH = -40;
 int MIN_RSSI_CMD = -20;
+
+int nextState = 0;
+int currentState = 0;
 
 CRGB leds[NUM_LEDS];
 
@@ -59,47 +54,48 @@ void loop()
 {
     scanResults scanresults = scanForNetworks();
 
-    switch (state)
+    switch (currentState)
     {
-    case HUMAN:
+    case 0:
         rssi_to_leds(scanresults.closestZombie);
         if (scanresults.closestZombie > MIN_RSSI_HZ)
         {
             Serial.println("ZOMBIE DETECTED!");
-            state = ZOMBIE;
+            nextState = 1;
         }
 
         if (scanresults.closestCommand > MIN_RSSI_CMD)
         {
-            state = COMMAND;
+            Serial.println("Command Detected!");
+            nextState = 2;
         }
 
-
         break;
-    case ZOMBIE:
+    case 1:
         rssi_to_leds(scanresults.closestHuman);
         if (scanresults.closestHuman > MIN_RSSI_ZH)
         {
             Serial.println("HUMAND DETECTED!");
-            state = HUMAN;
+            nextState = 0;
         }
 
         if (scanresults.closestCommand > MIN_RSSI_CMD)
         {
-            state = COMMAND;
+            Serial.println("Command Detected!");
+            nextState = 2;
         }
 
         break;
-    case COMMAND:
+    case 2:
         switch (scanresults.commandType)
         {
-        case START_GAME:
+        case 1:
             break;
 
-        case CHANGE_STATE:
+        case 2:
             break;
 
-        case CHANGE_MIN_RSSI_HZ:
+        case 3:
             if ((scanresults.commandMessage > -100) && (scanresults.commandMessage < 0))
             {
                 MIN_RSSI_HZ = scanresults.commandMessage;
@@ -107,7 +103,7 @@ void loop()
 
             break;
 
-        case CHANGE_MIN_RSSI_ZH:
+        case 4:
             if ((scanresults.commandMessage > -100) && (scanresults.commandMessage < 0))
             {
                 MIN_RSSI_ZH = scanresults.commandMessage;
@@ -119,6 +115,7 @@ void loop()
         }
         break;
     }
+
     if (DEBUG)
     {
         Serial.print("Zombie:   ");
@@ -139,11 +136,12 @@ void loop()
         Serial.println(scanresults.commandMessage);
 
         Serial.print("State:    ");
-        Serial.println(state);
+        Serial.println(currentState);
 
         Serial.println();
         delay(500);
     }
+    currentState = nextState;
 
 
     /*
@@ -250,7 +248,7 @@ scanResults scanForNetworks()
     results.idHuman         = 0;
 
     results.closestCommand  = -100;
-    results.commandType     = NONE;
+    results.commandType     = 0;
     results.commandMessage  = 0;
 
     for (int i = 0; i < n; i++)
