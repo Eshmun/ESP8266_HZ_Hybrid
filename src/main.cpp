@@ -47,7 +47,6 @@ void setup()
     WiFi.disconnect();
     WiFi.begin("Human", "", 1);
 
-    //ticker.attach_ms(100, scanForNetworks);
 }
 
 void loop()
@@ -75,7 +74,7 @@ void loop()
         rssi_to_leds(scanresults.closestHuman);
         if (scanresults.closestHuman > MIN_RSSI_ZH)
         {
-            Serial.println("HUMAND DETECTED!");
+            Serial.println("HUMAN DETECTED!");
             nextState = 0;
         }
 
