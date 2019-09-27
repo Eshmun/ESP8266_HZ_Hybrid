@@ -1,11 +1,11 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <FastLED.h>
-#include <Ticker.h>
+#include <Adafruit_NeoPixel.h>
+//#include <Ticker.h>
 
 #define NUM_LEDS 8
-#define DATA_PIN 14
-#define DEBUG 1
+#define DATA_PIN D5
+#define DEBUG 0
 
 //enum State_enum {HUMAN, ZOMBIE, COMMAND};
 //enum Scan_enum {NONE, ZOMBIE_FOUND, HUMAN_FOUND, ZOMBIE_PROX, HUMAN_PROX, COMMAND_PROX};
@@ -18,9 +18,11 @@ int MIN_RSSI_CMD = -20;
 int nextState = 0;
 int currentState = 0;
 
-CRGB leds[NUM_LEDS];
+int ID = 20;
 
-Ticker ticker;
+
+//Ticker ticker;
+Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 
 struct scanResults
 {
@@ -39,7 +41,7 @@ void setup()
     // put your setup code here, to run once:
     Serial.begin(115200);
 
-    FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
+    pixels.begin();
 
     ESP.wdtDisable();
 
@@ -56,10 +58,11 @@ void loop()
     switch (currentState)
     {
     case 0:
-        rssi_to_leds(scanresults.closestZombie);
+        rssi_to_leds(scanresults.closestZombie, MIN_RSSI_HZ);
         if (scanresults.closestZombie > MIN_RSSI_HZ)
         {
             Serial.println("ZOMBIE DETECTED!");
+            digitalWrite(LED_BUILTIN, LOW);
             nextState = 1;
         }
 
@@ -71,7 +74,7 @@ void loop()
 
         break;
     case 1:
-        rssi_to_leds(scanresults.closestHuman);
+        rssi_to_leds(scanresults.closestHuman, MIN_RSSI_ZH);
         if (scanresults.closestHuman > MIN_RSSI_ZH)
         {
             Serial.println("HUMAN DETECTED!");
@@ -115,6 +118,8 @@ void loop()
         break;
     }
 
+    currentState = nextState;
+
     if (DEBUG)
     {
         Serial.print("Zombie:   ");
@@ -135,72 +140,20 @@ void loop()
         Serial.println(scanresults.commandMessage);
 
         Serial.print("State:    ");
-        Serial.println(currentState);
+        Serial.print(currentState);
+        Serial.println(nextState);
 
         Serial.println();
         delay(500);
     }
-    currentState = nextState;
-
-
-    /*
-    int n = WiFi.scanNetworks(false, false, 1, NULL); //scan channel 1
-    for (int i = 0; i < n; i++)
-    {
-        if (WiFi.SSID(i) == "Zombie")
-        {
-
-            if (human)
-            {
-                rssi_to_leds((int)WiFi.RSSI(i));
-
-                if (WiFi.RSSI(i) > MIN_RSSI_HZ)
-                {
-                    WiFi.softAP("Zombie");
-                    Serial.println("I'm now a Zombie!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
-                    for (int j = 0; j <= 7; j++)
-                    {
-                        leds[j] = CRGB::Red;
-                    }
-
-                    human = false;
-                }
-            }
-
-
-        }
-        else if (WiFi.SSID(i) == "Human")
-        {
-
-            if (!human)
-            {
-                rssi_to_leds((int)WiFi.RSSI(i));
-            }
-            if (WiFi.RSSI(i) > MIN_RSSI_ZH)
-            {
-                if (!human)
-                {
-                    WiFi.softAP("Human");
-                    Serial.println("I'm now a Human!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
-                    for (int j = 0; j <= 7; j++)
-                    {
-                        leds[j] = CRGB::Green;
-                    }
-
-                    human = true;
-                }
-            }
-        }
-        FastLED.show();
-
-    }*/
 }
 
-void rssi_to_leds(int rssi)
+void rssi_to_leds(int rssi, int min_rssi)
 {
-    int RSSI_LEDS = map(0 - rssi, 100, 40, 0, NUM_LEDS - 1);
+    int RSSI_LEDS = map(0 - rssi, 100, min_rssi, 0, NUM_LEDS - 1);
+
+    Serial.println(rssi);
+    Serial.println(RSSI_LEDS);
 
     int b1 = (NUM_LEDS * 0.25) - 1;
     int b2 = (NUM_LEDS * 0.5) - 1;
@@ -210,25 +163,32 @@ void rssi_to_leds(int rssi)
     {
         if (j <= b1)
         {
-            leds[j] = CRGB::Green;
+            //leds[j] = CRGB::Green;
+            pixels.setPixelColor(j, pixels.Color(0, 128, 0));
         }
         else if (j > b1 && j <= b2)
         {
-            leds[j] = CRGB::Yellow;
+            //leds[j] = CRGB::Yellow;
+            pixels.setPixelColor(j, pixels.Color(255, 255, 0));
         }
         else if (j > b2 && j <= b3)
         {
-            leds[j] = CRGB::Orange;
+            //leds[j] = CRGB::Orange;
+            pixels.setPixelColor(j, pixels.Color(255, 100, 0));
         }
         else
         {
-            leds[j] = CRGB::Red;
+            //leds[j] = CRGB::Red;
+            pixels.setPixelColor(j, pixels.Color(255, 0, 0));
         }
     }
     for (int j = RSSI_LEDS + 1; j <= NUM_LEDS; j++)
     {
-        leds[j] = CRGB::Black;
+        //leds[j] = CRGB::Black;
+        pixels.setPixelColor(j, pixels.Color(0, 0, 0));
     }
+    //FastLED.show();
+    pixels.show();
 }
 
 scanResults scanForNetworks()
