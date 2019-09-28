@@ -7,18 +7,19 @@
 #define DATA_PIN D5
 #define DEBUG 0
 
-//enum State_enum {HUMAN, ZOMBIE, COMMAND};
-//enum Scan_enum {NONE, ZOMBIE_FOUND, HUMAN_FOUND, ZOMBIE_PROX, HUMAN_PROX, COMMAND_PROX};
-//enum Command_enum {NONE, START_GAME, CHANGE_STATE, CHANGE_MIN_RSSI_HZ, CHANGE_MIN_RSSI_ZH};
+enum State_enum {HUMAN, ZOMBIE, COMMAND, IDLE};
+enum Command_enum {NONE, START_GAME, SET_STATE, SET_MIN_RSSI_HZ, SET_MIN_RSSI_ZH, SET_CURRENT_TIME, SET_START_TIME };
 
 int MIN_RSSI_HZ = -40;
 int MIN_RSSI_ZH = -40;
-int MIN_RSSI_CMD = -20;
+int MIN_RSSI_CMD = -30;
 
-int nextState = 0;
-int currentState = 0;
+int nextState = 3;
+int currentState = 3;
 
-int ID = 20;
+char ID[] = "20";
+
+
 
 
 //Ticker ticker;
@@ -33,8 +34,9 @@ struct scanResults
 
 //bool human = true; //1=Human 0=Zombie
 
-void rssi_to_leds(int rssi);
+void rssi_to_leds(int rssi, int min_rssi);
 scanResults scanForNetworks();
+void setSSID(int state);
 
 void setup()
 {
@@ -45,9 +47,14 @@ void setup()
 
     ESP.wdtDisable();
 
+    char state_name[9] = "Idle.";
+    state_name[6] = ID[0];
+    state_name[7] = ID[1];
+
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect();
-    WiFi.begin("Human", "", 1);
+    WiFi.begin("Idle", "", 1);
+    WiFi.softAP(state_name);
 
 }
 
@@ -57,64 +64,86 @@ void loop()
 
     switch (currentState)
     {
-    case 0:
+    case HUMAN:
         rssi_to_leds(scanresults.closestZombie, MIN_RSSI_HZ);
         if (scanresults.closestZombie > MIN_RSSI_HZ)
         {
             Serial.println("ZOMBIE DETECTED!");
-            digitalWrite(LED_BUILTIN, LOW);
-            nextState = 1;
+            setSSID(ZOMBIE);
+            nextState = HUMAN;
         }
 
         if (scanresults.closestCommand > MIN_RSSI_CMD)
         {
             Serial.println("Command Detected!");
-            nextState = 2;
+            nextState = COMMAND;
         }
 
         break;
-    case 1:
+    case ZOMBIE:
         rssi_to_leds(scanresults.closestHuman, MIN_RSSI_ZH);
         if (scanresults.closestHuman > MIN_RSSI_ZH)
         {
             Serial.println("HUMAN DETECTED!");
-            nextState = 0;
+            setSSID(HUMAN);
+            nextState = HUMAN;
         }
 
         if (scanresults.closestCommand > MIN_RSSI_CMD)
         {
             Serial.println("Command Detected!");
-            nextState = 2;
+            nextState = COMMAND;
         }
 
         break;
-    case 2:
+    case COMMAND:
         switch (scanresults.commandType)
         {
-        case 1:
+        case START_GAME:
             break;
 
-        case 2:
+        case SET_STATE:
+            if (scanresults.commandMessage <= 3)
+            {
+                nextState = scanresults.commandMessage;
+                setSSID(nextState);
+            }
             break;
 
-        case 3:
+        case SET_MIN_RSSI_HZ:
             if ((scanresults.commandMessage > -100) && (scanresults.commandMessage < 0))
             {
                 MIN_RSSI_HZ = scanresults.commandMessage;
             }
-
+            nextState = IDLE;
+            setSSID(IDLE);
             break;
 
-        case 4:
+        case SET_MIN_RSSI_ZH:
             if ((scanresults.commandMessage > -100) && (scanresults.commandMessage < 0))
             {
                 MIN_RSSI_ZH = scanresults.commandMessage;
             }
+            nextState = IDLE;
+            setSSID(IDLE);
+            break;
+
+        case SET_CURRENT_TIME:
+            break;
+
+        case SET_START_TIME:
             break;
 
         default:
             break;
         }
+        break;
+    case IDLE:
+        if (scanresults.closestCommand > MIN_RSSI_CMD)
+            {
+                Serial.println("Command Detected!");
+                nextState = COMMAND;
+            }
         break;
     }
 
@@ -150,10 +179,10 @@ void loop()
 
 void rssi_to_leds(int rssi, int min_rssi)
 {
-    int RSSI_LEDS = map(0 - rssi, 100, min_rssi, 0, NUM_LEDS - 1);
+    int RSSI_LEDS = map(0 - rssi, 100, 0 - min_rssi, 0, NUM_LEDS - 1);
 
-    Serial.println(rssi);
-    Serial.println(RSSI_LEDS);
+    //Serial.println(rssi);
+    //Serial.println(RSSI_LEDS);
 
     int b1 = (NUM_LEDS * 0.25) - 1;
     int b2 = (NUM_LEDS * 0.5) - 1;
@@ -254,4 +283,35 @@ scanResults scanForNetworks()
         results.idHuman         = SSID.substring(SSID.indexOf(".") + 1).toInt();
     }
     return results;
+}
+void setSSID(int state){
+    if (state == ZOMBIE)
+    {
+        char state_name[10] = "Zombie.";
+        state_name[7] = ID[0];
+        state_name[8] = ID[1];
+        WiFi.softAP(state_name);
+        Serial.println(state_name);
+    }
+    else if (state == HUMAN)
+    {
+        char state_name[9] = "Human.";
+        state_name[6] = ID[0];
+        state_name[7] = ID[1];
+        WiFi.softAP(state_name);
+        Serial.println(state_name);
+    }
+    else if (state == IDLE)
+    {
+        char state_name[8] = "Idle.";
+        state_name[5] = ID[0];
+        state_name[6] = ID[1];
+        WiFi.softAP(state_name);
+        Serial.println(state_name);
+    }
+
+
+
+
+
 }
