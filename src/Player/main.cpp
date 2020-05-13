@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <Adafruit_NeoPixel.h>
-#include <SPI.h>
-#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
@@ -49,6 +47,7 @@ struct scanResults
 void rssi_to_leds(int rssi, int min_rssi);
 scanResults scanForNetworks();
 void setSSID(int state);
+void updateDisplay(int state);
 
 void setup()
 {
@@ -58,6 +57,8 @@ void setup()
     pixels.begin();
 
     display.begin(SSD1306_SWITCHCAPVCC);
+    display.clearDisplay();
+    display.display();
 
     ESP.wdtDisable();
 
@@ -162,6 +163,7 @@ void loop()
     }
 
     currentState = nextState;
+    updateDisplay(currentState);
 
     if (DEBUG)
     {
@@ -298,7 +300,8 @@ scanResults scanForNetworks()
     }
     return results;
 }
-void setSSID(int state){
+void setSSID(int state)
+{
     if (state == ZOMBIE)
     {
         char state_name[10] = "Zombie.";
@@ -323,9 +326,30 @@ void setSSID(int state){
         WiFi.softAP(state_name);
         Serial.println(state_name);
     }
+}
 
-
-
-
-
+void updateDisplay(int state)
+{
+    display.setTextSize(1);      // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE); // Draw white text
+    display.setCursor(0, 0);     // Start at top-left corner
+    display.cp437(true);         // Use full 256 char 'Code Page 437' font
+    display.clearDisplay();
+    
+    switch (state)
+    {
+    case HUMAN:
+        display.println("HUMAN");
+        break;
+    case ZOMBIE:
+        display.println("ZOMBIE");
+        break;
+    case COMMAND:
+        display.println("COMMAND");
+        break;
+    case IDLE:
+        display.println("IDLE");
+        break;
+    }
+    display.display();
 }
