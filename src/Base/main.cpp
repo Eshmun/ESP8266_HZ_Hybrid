@@ -14,7 +14,8 @@ char ID[] = "20";
 String commandString = "";
 bool stringComplete = false;
 
-void setSSID(int command);
+void setCommandSSID(String command);
+void serialEvent();
 
 void setup()
 {
@@ -35,27 +36,41 @@ void setup()
 
 void loop()
 {
+    if (Serial.available()) {
+        serialEvent();
+    }
     if (stringComplete) {
-    Serial.println(commandString);
-    // clear the string:
-    commandString = "";
-    stringComplete = false;
-  }
+        Serial.print(commandString);
+        setCommandSSID(commandString);
+        commandString = "";
+        stringComplete = false;
+    }
 
     if (DEBUG)
     {
         delay(500);
+        Serial.println("Debug");
     }
 }
 
 
-void setSSID(int command)
+void setCommandSSID(String command)
 {
-    char state_name[9] = "Command.";
-    state_name[8] = command;
+    char state_name[20] = "Command.";
+    for ( int i = 0; i < command.length(); i++)
+    {
+        state_name[8+i] = command.charAt(i);
+    }
+    
     WiFi.softAP(state_name);
     Serial.println(state_name);
 }
+
+void setIdle()
+{
+    
+}
+
 void serialEvent() {
   while (Serial.available()) {
     // get the new byte:
