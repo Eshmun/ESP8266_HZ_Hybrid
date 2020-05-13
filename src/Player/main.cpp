@@ -1,11 +1,23 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <Adafruit_NeoPixel.h>
-//#include <Ticker.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 #define NUM_LEDS 8
-#define DATA_PIN D5
+#define DATA_PIN D2
 #define DEBUG 0
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+#define OLED_MOSI   D7 //Connect to D1 on OLED
+#define OLED_CLK    D5 //Connect to D0 on OLED 
+#define OLED_DC     D1 //Connect to DC on OLED
+#define OLED_CS     D8 //Connect to CS on OLED
+#define OLED_RESET  D3 //Connect to RES on OLED
 
 enum State_enum {HUMAN, ZOMBIE, COMMAND, IDLE};
 enum Command_enum {NONE, START_GAME, SET_STATE, SET_MIN_RSSI_HZ, SET_MIN_RSSI_ZH, SET_CURRENT_TIME, SET_START_TIME };
@@ -14,16 +26,16 @@ int MIN_RSSI_HZ = -40;
 int MIN_RSSI_ZH = -40;
 int MIN_RSSI_CMD = -30;
 
-int nextState = 3;
-int currentState = 3;
+int nextState = IDLE;
+int currentState = IDLE;
 
 char ID[] = "20";
 
 
-
-
-//Ticker ticker;
 Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
+  OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 
 struct scanResults
 {
@@ -44,6 +56,8 @@ void setup()
     Serial.begin(115200);
 
     pixels.begin();
+
+    display.begin(SSD1306_SWITCHCAPVCC);
 
     ESP.wdtDisable();
 
@@ -70,7 +84,7 @@ void loop()
         {
             Serial.println("ZOMBIE DETECTED!");
             setSSID(ZOMBIE);
-            nextState = HUMAN;
+            nextState = ZOMBIE;
         }
 
         if (scanresults.closestCommand > MIN_RSSI_CMD)
