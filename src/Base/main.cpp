@@ -65,7 +65,7 @@ void loop()
 void setCommandSSID(String command)
 {
     char state_name[20] = "Command.";
-    for ( int i = 0; i < command.length(); i++)
+    for ( uint i = 0; i < command.length(); i++)
     {
         state_name[8+i] = command.charAt(i);
     }
