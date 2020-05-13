@@ -42,8 +42,7 @@ struct scanResults
 {
     int closestHuman, idHuman;
     int closestZombie, idZombie;
-    int closestCommand, commandType;
-    uint32_t commandMessage;
+    int closestCommand, commandType, commandMessage;
 };
 
 //bool human = true; //1=Human 0=Zombie
