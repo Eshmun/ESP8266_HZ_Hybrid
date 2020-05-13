@@ -11,17 +11,18 @@ int currentState = IDLE;
 
 char ID[] = "20";
 
-String commandString = "";
-bool stringComplete = false;
+String serialString = "";
+bool serialComplete = false;
 
 void setCommandSSID(String command);
 void serialEvent();
+void setIdleSSID();
 
 void setup()
 {
     // put your setup code here, to run once:
     Serial.begin(115200);
-    commandString.reserve(200);
+    serialString.reserve(200);
 
     ESP.wdtDisable();
 
@@ -39,11 +40,18 @@ void loop()
     if (Serial.available()) {
         serialEvent();
     }
-    if (stringComplete) {
-        Serial.print(commandString);
-        setCommandSSID(commandString);
-        commandString = "";
-        stringComplete = false;
+    if (serialComplete) {
+        Serial.print(serialString);
+        if (serialString.startsWith("Idle"))
+        {
+            setIdleSSID();
+        }
+        else
+        {
+            setCommandSSID(serialString);
+        }
+        serialString = "";
+        serialComplete = false;
     }
 
     if (DEBUG)
@@ -66,9 +74,10 @@ void setCommandSSID(String command)
     Serial.println(state_name);
 }
 
-void setIdle()
+void setIdleSSID()
 {
-    
+    char state_name[5] = "Idle";
+    WiFi.softAP(state_name); 
 }
 
 void serialEvent() {
@@ -76,11 +85,11 @@ void serialEvent() {
     // get the new byte:
     char inChar = (char)Serial.read();
     // add it to the commandString:
-    commandString += inChar;
+    serialString += inChar;
     // if the incoming character is a newline, set a flag so the main loop can
     // do something about it:
     if (inChar == '\n') {
-      stringComplete = true;
+      serialComplete = true;
     }
   }
 }
