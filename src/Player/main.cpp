@@ -27,7 +27,10 @@ int MIN_RSSI_CMD = -30;
 int nextState = IDLE;
 int currentState = IDLE;
 
-char ID[] = "20";
+uint32_t timeOffset = 0;
+uint64_t startTime = 0;
+
+char ID[] = "29";
 
 
 Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
@@ -39,7 +42,8 @@ struct scanResults
 {
     int closestHuman, idHuman;
     int closestZombie, idZombie;
-    int closestCommand, commandType, commandMessage;
+    int closestCommand, commandType;
+    uint32_t commandMessage;
 };
 
 //bool human = true; //1=Human 0=Zombie
@@ -115,6 +119,7 @@ void loop()
         switch (scanresults.commandType)
         {
         case START_GAME:
+
             break;
 
         case SET_STATE:
@@ -144,9 +149,21 @@ void loop()
             break;
 
         case SET_CURRENT_TIME:
+            if ((scanresults.commandMessage > 0))
+            {
+                timeOffset = scanresults.commandMessage;
+            }
+            nextState = IDLE;
+            setSSID(IDLE);
             break;
 
         case SET_START_TIME:
+            if ((scanresults.commandMessage > 0))
+            {
+                startTime = scanresults.commandMessage;
+            }
+            nextState = IDLE;
+            setSSID(IDLE);
             break;
 
         default:
@@ -159,6 +176,16 @@ void loop()
                 Serial.println("Command Detected!");
                 nextState = COMMAND;
             }
+        if (timeOffset > 0 && startTime > 0)
+        {
+            if ((double)((system_get_rtc_time()*5.75)/1000000) + timeOffset >= startTime )
+            {
+                nextState = HUMAN;
+                setSSID(HUMAN);
+            }
+            
+        }
+        
         break;
     }
 
@@ -351,5 +378,7 @@ void updateDisplay(int state)
         display.println("IDLE");
         break;
     }
+    display.setCursor(0,20);
+    display.println((double)((system_get_rtc_time()*5.75)/1000000));
     display.display();
 }
